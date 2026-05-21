@@ -46,6 +46,7 @@
 with Universe;
 with Spatial;
 with Vector; use Vector;
+with Collision_Math;
 with Display;
 with Ada.Text_IO;
 with Ada.Numerics.Big_Numbers.Big_Reals;
@@ -116,7 +117,16 @@ procedure Main with SPARK_Mode is
         (Initial_Radii (I) + Initial_Radii (J))) with
       Pre => I in 1 .. 2 and J in 1 .. 2;
 
-   --  TODO: define No_Future_Collision_Pair
+   function No_Future_Collision_Pair (I, J : Integer) return Boolean is
+     (not Collision_Math.Will_Collide_Vec
+        (Vector.Sub
+           (Spatial.To_Vector (Initial_Positions (I)),
+            Spatial.To_Vector (Initial_Positions (J))),
+         Vector.Sub
+           (Spatial.Vel_To_Vector (Initial_Velocities (I)),
+            Spatial.Vel_To_Vector (Initial_Velocities (J))),
+         Pair_Sep2 (I, J)))
+   with Pre => I in 1 .. 2 and then J in 1 .. 2;
 
    --  TODO: define Lemma_No_Collision_Pair
 
@@ -206,11 +216,14 @@ procedure Main with SPARK_Mode is
 begin
    Reset_Universe;
 
-   --  TODO: add pre-loop collision check
+   if not No_Future_Collision_Pair (1, 2) then
+      return;
+   end if;
 
    for Frame in 1 .. 5000 loop
       pragma Loop_Invariant (Position_Invariant (U));
       pragma Loop_Invariant (Tick_Count >= To_Big_Real (0));
+      pragma Loop_Invariant (No_Future_Collision_Pair (1, 2));
 
       --  TODO: call soundness lemma and assert collision freedom
 
@@ -242,7 +255,9 @@ begin
 
             Reset_Universe;
 
-            --  TODO: add post-bounce collision check
+            if not No_Future_Collision_Pair (1, 2) then
+               exit;
+            end if;
          end if;
       end;
    end loop;
