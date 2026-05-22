@@ -46,6 +46,7 @@
 with Universe;
 with Spatial;
 with Vector; use Vector;
+with Collision_Math;
 with Display;
 with Ada.Text_IO;
 with Ada.Numerics.Big_Numbers.Big_Reals;
@@ -53,6 +54,7 @@ use Ada.Numerics.Big_Numbers.Big_Reals;
 
 procedure Main with SPARK_Mode is
    use type Spatial.Velocity;
+   use type Spatial.Position;
    package Univ is new Universe (10);
 
    package FC is new Float_Conversions (Float);
@@ -82,7 +84,20 @@ procedure Main with SPARK_Mode is
 
    Tick_Count : Big_Real := To_Big_Real (0);
 
-   --  TODO: define Position_Invariant
+   function Position_Invariant (U : Univ.Universe) return Boolean is
+     (Univ.Item_Count (U) = 2
+      and then Tick_Count >= To_Big_Real (0)
+      and then
+        (for all I in 1 .. 2 =>
+           Univ.Get_Position (U, I) =
+             Spatial.To_Position
+               (Vector.Add
+                  (Spatial.To_Vector (Initial_Positions (I)),
+                   Vector.Scale
+                     (Spatial.Vel_To_Vector (Initial_Velocities (I)),
+                      Tick_Count)))
+           and then Univ.Get_Velocity (U, I) = Initial_Velocities (I)
+           and then Univ.Get_Radius   (U, I) = Initial_Radii (I)));
 
    function Squared_Dist
      (U : Univ.Universe; I, J : Integer) return Big_Real is
@@ -102,7 +117,16 @@ procedure Main with SPARK_Mode is
         (Initial_Radii (I) + Initial_Radii (J))) with
       Pre => I in 1 .. 2 and J in 1 .. 2;
 
-   --  TODO: define No_Future_Collision_Pair
+   function No_Future_Collision_Pair (I, J : Integer) return Boolean is
+     (not Collision_Math.Will_Collide_Vec
+        (Vector.Sub
+           (Spatial.To_Vector (Initial_Positions (I)),
+            Spatial.To_Vector (Initial_Positions (J))),
+         Vector.Sub
+           (Spatial.Vel_To_Vector (Initial_Velocities (I)),
+            Spatial.Vel_To_Vector (Initial_Velocities (J))),
+         Pair_Sep2 (I, J)))
+   with Pre => I in 1 .. 2 and then J in 1 .. 2;
 
    --  TODO: define Lemma_No_Collision_Pair
 
@@ -174,7 +198,7 @@ procedure Main with SPARK_Mode is
    end Print_Collision;
 
    procedure Reset_Universe
-   --  TODO: add postcondition
+     with Post => Position_Invariant (U)
    is
    begin
       Tick_Count := To_Big_Real (0);
@@ -192,10 +216,14 @@ procedure Main with SPARK_Mode is
 begin
    Reset_Universe;
 
-   --  TODO: add pre-loop collision check
+   if not No_Future_Collision_Pair (1, 2) then
+      return;
+   end if;
 
    for Frame in 1 .. 5000 loop
-      --  TODO: add loop invariants
+      pragma Loop_Invariant (Position_Invariant (U));
+      pragma Loop_Invariant (Tick_Count >= To_Big_Real (0));
+      pragma Loop_Invariant (No_Future_Collision_Pair (1, 2));
 
       --  TODO: call soundness lemma and assert collision freedom
 
@@ -227,7 +255,9 @@ begin
 
             Reset_Universe;
 
-            --  TODO: add post-bounce collision check
+            if not No_Future_Collision_Pair (1, 2) then
+               exit;
+            end if;
          end if;
       end;
    end loop;
