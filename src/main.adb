@@ -39,9 +39,24 @@
 --    range would be an out-of-bounds array write, raising Constraint_Error. It would
 --    also corrupt an uninitialised slot in the array.
 
---  Use of Generative AI: Claude (claude-sonnet-4-6) was used to assist with drafting
---  the SPARK specifications and ghost lemmas. All AI-generated code was validated by
---  running gnatprove and correcting any proof failures before submission.
+--  Task 7 Reflection:
+--  An early halt does not prove that the full wall-bouncing simulation would
+--  definitely collide if it kept running. In this program, the halt checks at
+--  the start and after each bounce are based on No_Future_Collision_Pair,
+--  which calls Will_Collide_Vec using only Initial_Positions,
+--  Initial_Velocities, and Pair_Sep2. This is an exact check for the current
+--  straight-line trajectories since the most recent Reset_Universe, assuming
+--  those velocities remain unchanged. However, the check does not consider
+--  arena walls or compare the predicted object-collision time with the next
+--  wall-bounce time. A future wall bounce could change a velocity before the
+--  predicted object collision would occur. The Task 6 proof only establishes
+--  the safe-to-continue direction: if No_Future_Collision_Pair holds, then the
+--  current frame is separated. It does not establish completeness of the
+--  halt condition for the full bouncing simulator.
+
+--  Use of Generative AI: Claude and Codex were used to assist with drafting
+--  the SPARK specifications, reflection, and ghost lemmas. The final code was
+--  validated with alr build and gnatprove --level=2.
 
 with Universe;
 with Spatial;
@@ -115,7 +130,7 @@ procedure Main with SPARK_Mode is
      (I, J : Integer) return Big_Real is
        ((Initial_Radii (I) + Initial_Radii (J)) *
         (Initial_Radii (I) + Initial_Radii (J))) with
-      Pre => I in 1 .. 2 and J in 1 .. 2;
+      Pre => I in 1 .. 2 and then J in 1 .. 2;
 
    function No_Future_Collision_Pair (I, J : Integer) return Boolean is
      (not Collision_Math.Will_Collide_Vec
@@ -128,7 +143,63 @@ procedure Main with SPARK_Mode is
          Pair_Sep2 (I, J)))
    with Pre => I in 1 .. 2 and then J in 1 .. 2;
 
-   --  TODO: define Lemma_No_Collision_Pair
+   procedure Lemma_No_Collision_Pair
+     (U : Univ.Universe; I, J : Integer)
+   with
+     Ghost,
+     Pre =>
+       Position_Invariant (U)
+       and then I in 1 .. 2
+       and then J in 1 .. 2
+       and then Tick_Count >= To_Big_Real (0)
+       and then No_Future_Collision_Pair (I, J),
+     Post => Squared_Dist (U, I, J) > Pair_Sep2 (I, J)
+   is
+      T      : constant Big_Real := Tick_Count;
+      P_I    : constant Vector.Vector :=
+        Spatial.To_Vector (Univ.Get_Position (U, I));
+      P_J    : constant Vector.Vector :=
+        Spatial.To_Vector (Univ.Get_Position (U, J));
+      Init_I : constant Vector.Vector :=
+        Spatial.To_Vector (Initial_Positions (I));
+      Init_J : constant Vector.Vector :=
+        Spatial.To_Vector (Initial_Positions (J));
+      Vel_I  : constant Vector.Vector :=
+        Spatial.Vel_To_Vector (Initial_Velocities (I));
+      Vel_J  : constant Vector.Vector :=
+        Spatial.Vel_To_Vector (Initial_Velocities (J));
+      S      : constant Vector.Vector := Vector.Sub (Init_I, Init_J);
+      V      : constant Vector.Vector := Vector.Sub (Vel_I, Vel_J);
+      Eps2   : constant Big_Real := Pair_Sep2 (I, J);
+   begin
+      pragma Assert
+        (Univ.Get_Position (U, I) =
+           Spatial.To_Position
+             (Vector.Add (Init_I, Vector.Scale (Vel_I, T))));
+      pragma Assert
+        (Univ.Get_Position (U, J) =
+           Spatial.To_Position
+             (Vector.Add (Init_J, Vector.Scale (Vel_J, T))));
+      pragma Assert (P_I = Vector.Add (Init_I, Vector.Scale (Vel_I, T)));
+      pragma Assert (P_J = Vector.Add (Init_J, Vector.Scale (Vel_J, T)));
+
+      Collision_Math.Lemma_Sq_Dist_Bridge
+        (P_I, P_J, Init_I, Init_J, Vel_I, Vel_J, T);
+
+      pragma Assert
+        (not Collision_Math.Will_Collide_Vec (S, V, Eps2));
+      pragma Assert (Eps2 >= To_Big_Real (0));
+
+      Collision_Math.Check_Implies_Safe_Vec (S, V, Eps2, T);
+
+      pragma Assert
+        (Vector.Dot (Vector.Sub (P_I, P_J), Vector.Sub (P_I, P_J)) =
+           Collision_Math.Sq_Dist_At_Vec (S, V, T));
+      pragma Assert
+        (Squared_Dist (U, I, J) =
+           Vector.Dot (Vector.Sub (P_I, P_J), Vector.Sub (P_I, P_J)));
+      pragma Assert (Squared_Dist (U, I, J) > Eps2);
+   end Lemma_No_Collision_Pair;
 
    type Bounce_Flags is record
       X : Boolean := False;
@@ -225,7 +296,8 @@ begin
       pragma Loop_Invariant (Tick_Count >= To_Big_Real (0));
       pragma Loop_Invariant (No_Future_Collision_Pair (1, 2));
 
-      --  TODO: call soundness lemma and assert collision freedom
+      Lemma_No_Collision_Pair (U, 1, 2);
+      pragma Assert (Squared_Dist (U, 1, 2) > Pair_Sep2 (1, 2));
 
       Disp.Capture (U);
       Univ.Tick (U);
