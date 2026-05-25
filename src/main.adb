@@ -41,22 +41,24 @@
 
 --  Task 7 Reflection:
 --  An early halt does not prove that the full wall-bouncing simulation would
---  definitely collide if it kept running. In this program, the halt checks at
---  the start and after each bounce are based on No_Future_Collision_Pair,
---  which calls Will_Collide_Vec using only Initial_Positions,
---  Initial_Velocities, and Pair_Sep2. This is an exact check for the current
---  straight-line trajectories since the most recent Reset_Universe, assuming
---  those velocities remain unchanged. However, the check does not consider
---  arena walls or compare the predicted object-collision time with the next
---  wall-bounce time. A future wall bounce could change a velocity before the
---  predicted object collision would occur. The Task 6 proof only establishes
---  the safe-to-continue direction: if No_Future_Collision_Pair holds, then the
---  current frame is separated. It does not establish completeness of the
---  halt condition for the full bouncing simulator.
-
---  Use of Generative AI: Claude and Codex were used to assist with drafting
---  the SPARK specifications, reflection, and ghost lemmas. The final code was
---  validated with alr build and gnatprove --level=2.
+--  definitely collide if it continued running — a false halt is possible.
+--
+--  Task 6 establishes a one-way implication: if No_Future_Collision_Pair
+--  holds, then the current frame is guaranteed to be collision-free. However,
+--  the converse is not proved. When No_Future_Collision_Pair is false and the
+--  simulation halts, this does not mean a collision would inevitably occur in
+--  the full bouncing simulation.
+--
+--  The reason is that No_Future_Collision_Pair evaluates only the straight-line
+--  trajectories under the velocities current since the last Reset_Universe. It
+--  cannot anticipate future wall bounces. A bounce occurring before the
+--  predicted collision time could redirect one or both objects, avoiding the
+--  collision entirely.
+--
+--  This makes the halt condition conservative: the simulation guarantees
+--  safety (no collision will occur during any executed frame) at the cost of
+--  liveness (it may terminate early even when continuation would have been
+--  safe).
 
 with Universe;
 with Spatial;
