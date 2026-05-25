@@ -60,6 +60,10 @@
 --  liveness (it may terminate early even when continuation would have been
 --  safe).
 
+--  Therefore, the answer to the question is: No. An early halt does
+--  not guarantee that a collision would have occurred. The check is
+--  sound but not complete.
+
 --  Use of Generative AI: Claude and Codex were used to assist with drafting
 --  the SPARK specifications, reflection, and ghost lemmas. The final code was
 --  validated with alr build and gnatprove --level=2.
