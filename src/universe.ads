@@ -1,3 +1,5 @@
+--Author: Lisong Xiao, Bo Huang, Hongjian Zhu
+
 with Ada.Numerics.Big_Numbers.Big_Reals;
 use Ada.Numerics.Big_Numbers.Big_Reals;
 with Spatial;

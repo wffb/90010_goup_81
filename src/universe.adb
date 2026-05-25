@@ -1,3 +1,5 @@
+--Author: Lisong Xiao, Bo Huang, Hongjian Zhu
+
 with Ada.Text_IO; with Ada.Integer_Text_IO;
 
 package body Universe with SPARK_Mode is

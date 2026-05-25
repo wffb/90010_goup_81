@@ -1,3 +1,7 @@
+--Author: Lisong Xiao, Bo Huang, Hongjian Zhu
+
+
+
 --  Task 1, Question 1:
 --  The Spatial package defines Position and Velocity as separate Ada derived types
 --  (both derived from Vector.Vector). This means Ada's strong type system treats them
