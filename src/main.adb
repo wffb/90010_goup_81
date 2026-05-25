@@ -41,7 +41,7 @@
 
 --  Task 7 Reflection:
 --  An early halt does not prove that the full wall-bouncing simulation would
---  definitely collide if it continued running — a false halt is possible.
+--  definitely collide if it continued running -- a false halt is possible.
 --
 --  Task 6 establishes a one-way implication: if No_Future_Collision_Pair
 --  holds, then the current frame is guaranteed to be collision-free. However,
@@ -59,6 +59,10 @@
 --  safety (no collision will occur during any executed frame) at the cost of
 --  liveness (it may terminate early even when continuation would have been
 --  safe).
+
+--  Use of Generative AI: Claude and Codex were used to assist with drafting
+--  the SPARK specifications, reflection, and ghost lemmas. The final code was
+--  validated with alr build and gnatprove --level=2.
 
 with Universe;
 with Spatial;
